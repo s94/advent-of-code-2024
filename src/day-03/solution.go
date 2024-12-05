@@ -27,20 +27,9 @@ func MullItOverPartTwo() int {
 	var retVal int
 	regex := regexp.MustCompile(`mul\((\d{1,3},\d{1,3})\)`)
 	joinedStrings := strings.Join(puzzleInput, "")
-
 	doArray := strings.Split(joinedStrings, "do()")
-	firstString := strings.Split(doArray[0], "don't()")[0]
 
-	firstStringMatches := regex.FindAllStringSubmatch(firstString, -1)
-	for _, match := range firstStringMatches {
-		retVal += processMatch([]string{match[1]})
-	}
-
-	for i, d := range doArray {
-		if i == 0 {
-			continue
-		}
-
+	for _, d := range doArray {
 		doString := strings.Split(d, "don't()")[0]
 
 		matches := regex.FindAllStringSubmatch(doString, -1)
