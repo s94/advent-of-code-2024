@@ -2,6 +2,7 @@ package day06
 
 import (
 	"advent-of-code/src/utils"
+	"sync"
 )
 
 type coords struct {
@@ -12,28 +13,79 @@ type coords struct {
 type direction int
 
 const (
-	North direction = iota // 0
-	East                   // 1
-	South                  // 2
-	West                   // 3
-	Err                    // -1
+	north    direction = iota // 0
+	east                      // 1
+	south                     // 2
+	west                      // 3
+	err                       // 4
+	obstacle string    = "#"
+	visited  string    = "X"
 )
-
-var puzzleInput = getPuzzleInput()
 
 func GuardGallivantPartOne() int {
 	var retVal int
 
-	const obstacle string = "#"
-	const visited string = "X"
-	guardDirection := North
+	puzzleInput := simulateScenario(coords{}, make(chan int, 1), nil)
+	for _, row := range puzzleInput {
+		for _, cell := range row {
+			if cell == visited {
+				retVal++
+			}
+		}
+	}
+
+	return retVal
+}
+
+func GuardGallivantPartTwo() int {
+	var retVal int
+	ch := make(chan int)
+	var wg sync.WaitGroup
+
+	for i, row := range getPuzzleInput() {
+		for j, cell := range row {
+			if cell == obstacle || cell == "^" {
+				continue
+			} else {
+				wg.Add(1)
+				go simulateScenario(coords{
+					x: j,
+					y: i,
+				}, ch, &wg)
+			}
+		}
+	}
+
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
+	for result := range ch {
+		if result == 6000 {
+			retVal++
+		}
+	}
+
+	return retVal
+}
+
+func simulateScenario(obstacleCoords coords, ch chan<- int, wg *sync.WaitGroup) [][]string {
+	puzzleInput := getPuzzleInput()
+	puzzleInput[obstacleCoords.y][obstacleCoords.x] = obstacle
+
+	guardDirection := north
 	guardCoords := coords{
 		x: 89,
 		y: 84,
 	}
 	nextCoords := getNextCoords(guardDirection, guardCoords)
 
+	counter := 0
 	for {
+		if counter >= 6000 {
+			break
+		}
 		if (nextCoords.y < 0 || nextCoords.y > len(puzzleInput)-1) || (nextCoords.x < 0 || nextCoords.x > len(puzzleInput[0])-1) {
 			puzzleInput[guardCoords.y][guardCoords.x] = visited
 			break
@@ -51,52 +103,49 @@ func GuardGallivantPartOne() int {
 			nextCoords = getNextCoords(guardDirection, guardCoords)
 			puzzleInput[previousCoords.y][previousCoords.x] = visited
 		}
+		counter++
+	}
+	ch <- counter
+	if wg != nil {
+		wg.Done()
 	}
 
-	for _, row := range puzzleInput {
-		for _, cell := range row {
-			if cell == visited {
-				retVal++
-			}
-		}
-	}
-
-	return retVal
+	return puzzleInput
 }
 
 func turnGuard(currentDirection direction) direction {
 	switch currentDirection {
-	case North:
-		return East
-	case East:
-		return South
-	case South:
-		return West
-	case West:
-		return North
+	case north:
+		return east
+	case east:
+		return south
+	case south:
+		return west
+	case west:
+		return north
 	default:
-		return Err
+		return err
 	}
 }
 
 func getNextCoords(d direction, currentCoords coords) coords {
 	switch d {
-	case North:
+	case north:
 		return coords{
 			x: currentCoords.x,
 			y: currentCoords.y - 1,
 		}
-	case East:
+	case east:
 		return coords{
 			x: currentCoords.x + 1,
 			y: currentCoords.y,
 		}
-	case South:
+	case south:
 		return coords{
 			x: currentCoords.x,
 			y: currentCoords.y + 1,
 		}
-	case West:
+	case west:
 		return coords{
 			x: currentCoords.x - 1,
 			y: currentCoords.y,
